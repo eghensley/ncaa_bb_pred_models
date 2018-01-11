@@ -79,7 +79,7 @@ def allowed_clust_wteam(n_feats, n_clusts, scale):
     import pandas as pd
     from scipy.cluster.hierarchy import linkage, fcluster
     from sklearn.decomposition import PCA
-    data = singlegamestats.pull_pointsallowed()
+    data = singlegamestats.pull_pointsallowed_wteam()
     fulldata = data.dropna(how='any')
     for gamestat in ['defensive-rebounds-per-game','extra-chances-per-game','offensive-rebounds-per-game','blocks-per-game']:
         fulldata[gamestat[:-4] + 'poss'] = fulldata[gamestat]/fulldata['possessions-per-game']

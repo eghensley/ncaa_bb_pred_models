@@ -216,6 +216,51 @@ def pull_pointsallowed():
     del gamedata['points']    
     return gamedata
 
+def pull_pointsallowed_wteam():
+    import mysql.connector   
+    import pandas as pd
+    import numpy as np
+    passcode = 'ibm1234'
+    cnx = mysql.connector.connect(user='root', password=passcode,
+                              host='127.0.0.1',
+                              database='ncaa_bb') 
+    cursor = cnx.cursor()
+
+    cursor.execute('select favorite, \
+        underdog,\
+        favscore,\
+        dogscore,\
+        bs.*\
+        from oddsdata as od\
+        join basestats as bs\
+    		on od.oddsdate = bs.statdate AND\
+        (od.favorite = bs.teamname OR od.underdog = bs.teamname);')
+    
+    labels = ['fav', 'dog', 'favscore', 'dogscore', "team", "date", "points", "offensive-efficiency","floor-percentage","points-from-2-pointers",
+    "points-from-3-pointers","percent-of-points-from-2-pointers","percent-of-points-from-3-pointers",
+    "percent-of-points-from-free-throws","defensive-efficiency","shooting-pct","fta-per-fga","ftm-per-100-possessions",
+    "free-throw-rate","three-point-rate","two-point-rate","three-pointers-made-per-game","effective-field-goal-pct",
+    "true-shooting-percentage","offensive-rebounds-per-game","offensive-rebounding-pct","defensive-rebounds-per-game",
+    "defensive-rebounding-pct","blocks-per-game","steals-per-game","block-pct","steals-perpossession",
+    "steal-pct","assists-per-game","turnovers-per-game","turnovers-per-possession","assist--per--turnover-ratio",
+    "assists-per-fgm","assists-per-possession","turnover-pct","personal-fouls-per-game","personal-fouls-per-possession",
+    "personal-foul-pct","possessions-per-game","extra-chances-per-game","effective-possession-ratio"]
+
+    gamedata = pd.DataFrame(cursor.fetchall(), columns = labels)
+    cursor.close()
+    cnx.close()
+
+    allowed = [np.array(gamedata['dogscore'])[i] if np.array(gamedata['team'])[i] == np.array(gamedata['fav'])[i] else np.array(gamedata['favscore'])[i] for i in range(0, len(gamedata))]
+    gamedata['allowed'] = allowed
+    del gamedata['fav']
+    del gamedata['dog']
+    del gamedata['favscore']
+    del gamedata['dogscore']
+#    del gamedata['team']
+#    del gamedata['date']
+    del gamedata['points']    
+    return gamedata
+
 def pull_share():
     import mysql.connector   
     import pandas as pd
