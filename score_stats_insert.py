@@ -6,8 +6,8 @@ Created on Sun Dec 31 14:09:48 2017
 @author: eric.hensleyibm.com
 """
 
-from pca_clust import scored_clust_wteam
-from sklearn.preprocessing import StandardScaler
+from pca_clust import allowed_clust_wteam
+from sklearn.preprocessing import RobustScaler
 import mysql.connector 
 import numpy as np  
 passcode = 'ibm1234'
@@ -16,7 +16,7 @@ cnx = mysql.connector.connect(user='root', password=passcode,
                           database='ncaa_bb') 
 cursor = cnx.cursor()
     
-x, y, iid = scored_clust_wteam(9, 4, StandardScaler())
+x, y, iid = allowed_clust_wteam(9, 7, RobustScaler())
 
 x1 = x[1]
 x2 = x[2]

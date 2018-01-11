@@ -73,6 +73,76 @@ def allowed_clust(n_feats, n_clusts, scale):
         pcadf[j] = PCA(n_components = 1, random_state = 1108).fit_transform(scale.fit_transform(X[varclust])).flatten()
     return pcadf, scoreresults
 
+
+def allowed_clust_wteam(n_feats, n_clusts, scale):
+    import singlegamestats
+    import pandas as pd
+    from scipy.cluster.hierarchy import linkage, fcluster
+    from sklearn.decomposition import PCA
+    data = singlegamestats.pull_pointsallowed()
+    fulldata = data.dropna(how='any')
+    for gamestat in ['defensive-rebounds-per-game','extra-chances-per-game','offensive-rebounds-per-game','blocks-per-game']:
+        fulldata[gamestat[:-4] + 'poss'] = fulldata[gamestat]/fulldata['possessions-per-game']
+    scoreresults = fulldata['allowed']
+    del fulldata['allowed'] 
+    del fulldata['points-from-2-pointers']
+    del fulldata['points-from-3-pointers']
+    del fulldata['three-pointers-made-per-game']
+    del fulldata['defensive-efficiency']
+    del fulldata['offensive-efficiency']
+    del fulldata['possessions-per-game']
+    indices = ['defensive-rebounds-per-poss',
+ 'defensive-rebounds-per-game',
+ 'personal-fouls-per-game',
+ 'steals-perpossession',
+ 'steal-pct',
+ 'personal-fouls-per-possession',
+ 'steals-per-game',
+ 'block-pct',
+ 'extra-chances-per-poss',
+ 'blocks-per-poss',
+ 'extra-chances-per-game',
+ 'personal-foul-pct',
+ 'defensive-rebounding-pct',
+ 'floor-percentage',
+ 'turnover-pct',
+ 'effective-possession-ratio',
+ 'turnovers-per-possession',
+ 'blocks-per-game',
+ 'assists-per-fgm',
+ 'true-shooting-percentage',
+ 'effective-field-goal-pct',
+ 'percent-of-points-from-3-pointers',
+ 'shooting-pct',
+ 'percent-of-points-from-free-throws',
+ 'turnovers-per-game',
+ 'percent-of-points-from-2-pointers',
+ 'assist--per--turnover-ratio',
+ 'offensive-rebounding-pct',
+ 'fta-per-fga',
+ 'three-point-rate',
+ 'two-point-rate',
+ 'assists-per-game',
+ 'offensive-rebounds-per-game',
+ 'free-throw-rate',
+ 'ftm-per-100-possessions',
+ 'assists-per-possession',
+ 'offensive-rebounds-per-poss']
+
+    X = fulldata[indices[:n_feats]]
+    Z = linkage(X.T, 'ward')
+    clusts = None
+    clusts=fcluster(Z, n_clusts, criterion='maxclust')
+    pcadf = pd.DataFrame()
+    for j in set(clusts):
+        varclust = None
+        varclust = ([(list(X)[v] if clusts[v] == j else None) for v in range(0, len(clusts))])
+        varclust = [x for x in varclust if x != None]
+        print(varclust)
+        pcadf[j] = PCA(n_components = 1, random_state = 1108).fit_transform(scale.fit_transform(X[varclust])).flatten()
+    iddf = fulldata[['team', 'date']]
+    return pcadf, scoreresults, iddf
+
 def scored_clust(n_feats, n_clusts, scale):
     import singlegamestats
     import pandas as pd
