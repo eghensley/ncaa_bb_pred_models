@@ -31,3 +31,6 @@ for stat in statlist:
         ha_for = None
         ha_against = None
     target_stat_data[stat] = pred_stat_data
+    
+    
+target_stat_data

@@ -12,6 +12,53 @@ import pandas as pd
 import mysql.connector 
 import numpy as np
 
+def stat_actual(stat):
+    passcode = 'ibm1234'   
+    cnx = mysql.connector.connect(user='root', password=passcode,
+                              host='127.0.0.1',
+                              database='ncaa_bb') 
+    cursor = cnx.cursor()
+    query = "SELECT \
+            oddsdate, favorite, underdog, bs1.`%s`, bs2.`%s`, homeaway\
+            FROM\
+            oddsdata as od\
+            join basestats as bs1 on od.oddsdate = bs1.statdate and bs1.teamname = od.favorite\
+            join basestats as bs2 on od.oddsdate = bs2.statdate and bs2.teamname = od.underdog\
+            ORDER BY oddsdate ASC" % (stat, stat)
+    cursor.execute(query)
+    names = ['date', 'fav', 'dog', 'favstat', 'dogstat', 'ha']
+    data = pd.DataFrame(cursor.fetchall(), columns = names)
+    data=data.dropna(how='any')
+    cursor.close()
+    cnx.close()
+    statdict = {}
+    for date, t1, t2, s1, s2, loc in np.array(data):
+        statdict[str(date)+t1.replace(' ', '_')] = {'date':date, 'team':t1, 'stat_actual':s1}
+        statdict[str(date)+t2.replace(' ', '_')] = {'date':date, 'team':t2, 'stat_actual':s2}
+    return statdict
+
+
+def trigger_actual(trigger):
+    passcode = 'ibm1234'   
+    cnx = mysql.connector.connect(user='root', password=passcode,
+                              host='127.0.0.1',
+                              database='ncaa_bb') 
+    cursor = cnx.cursor()
+    query = "SELECT scoredate, teamname, %s FROM ncaa_bb.score_stats ORDER BY scoredate ASC" % (trigger)
+    cursor.execute(query)
+    names = ['date', 'team', 'trigger']
+    data = pd.DataFrame(cursor.fetchall(), columns = names)
+    data=data.dropna(how='any')
+    cursor.close()
+    cnx.close()
+    statdict = {}
+    for date, t, s in np.array(data):
+        statdict[str(date)+t.replace(' ', '_')] = {'date':date, 'team':t, 'trigger':s}
+    return statdict
+
+
+
+
 def team_rolling_avg_weighted(stat, length):
 #    stat = 'true-shooting-percentage'
 #    length = 6      
@@ -92,8 +139,10 @@ def team_rolling_avg_weighted(stat, length):
            
 #        for_record = (date, t1, t2, t1_weighted_score, t2_weighted_score)
 #        against_record = (date, t1, t2, t1_weighted_allowed, t2_weighted_allowed)
-        fordict[str(date)+t1+t2] = {'date':date, 'team1':t1, 'team2':t2, 'forstat1':t1_weighted_score, 'forstat2':t2_weighted_score}
-        againstdict[str(date)+t1+t2] = {'date':date, 'team1':t1, 'team2':t2, 'againststat1':t1_weighted_allowed, 'againststat2':t2_weighted_allowed}
+        fordict[str(date)+t1.replace(' ', '_')] = {'date':date, 'team':t1, '%s_g_Tweight_for_%s'%(length, stat):t1_weighted_score}
+        fordict[str(date)+t2.replace(' ', '_')] = {'date':date, 'team':t2, '%s_g_Tweight_for_%s'%(length, stat):t2_weighted_score}
+        againstdict[str(date)+t1.replace(' ', '_')] = {'date':date, 'team':t1, '%s_g_Tweight_allow_%s'%(length, stat):t1_weighted_allowed}
+        againstdict[str(date)+t2.replace(' ', '_')] = {'date':date, 'team':t2, '%s_g_Tweight_allow_%s'%(length, stat):t2_weighted_allowed}
         
 #        forlist.append(for_record)    
 #        againstlist.append(against_record)    
@@ -277,8 +326,10 @@ def ha_rolling_avg_weighted(stat, length):
 #        for_record = (date, t1, t2, t1_weighted_score, t2_weighted_score, t1_ha_score_spread, t2_ha_score_spread)
 #        against_record = (date, t1, t2, t1_weighted_allowed, t2_weighted_allowed, t1_ha_allow_spread, t2_ha_allow_spread)
 
-        fordict[str(date)+t1+t2] = {'date':date, 'team1':t1, 'team2':t2, 'forstat1':t1_weighted_score, 'forstat2':t2_weighted_score, 'for_haspread1': t1_ha_score_spread, 'for_haspread2': t2_ha_score_spread}
-        againstdict[str(date)+t1+t2] = {'date':date, 'team1':t1, 'team2':t2, 'againststat1':t1_weighted_allowed, 'againststat2':t2_weighted_allowed, 'against_haspread1': t1_ha_allow_spread, 'against_haspread2': t2_ha_allow_spread}
+        fordict[str(date)+t1.replace(' ', '_')] = {'date':date, 'team':t1, '%s_g_HAweight_for_%s' % (length, stat):t1_weighted_score, '%s_g_HAspread_for_%s'%(length, stat): t1_ha_score_spread}
+        fordict[str(date)+t2.replace(' ', '_')] = {'date':date, 'team':t2, '%s_g_HAweight_for_%s' % (length, stat):t2_weighted_score, '%s_g_HAspread_for_%s'%(length, stat): t2_ha_score_spread}
+        againstdict[str(date)+t1.replace(' ', '_')] = {'date':date, 'team':t1, '%s_g_HAweight_allow_%s' % (length, stat):t1_weighted_allowed, '%s_g_HAspread_allow_%s'%(length, stat): t1_ha_allow_spread}
+        againstdict[str(date)+t2.replace(' ', '_')] = {'date':date, 'team':t2, '%s_g_HAweight_allow_%s' % (length, stat):t2_weighted_allowed, '%s_g_HAspread_allow_%s'%(length, stat): t2_ha_allow_spread}
     
 #        forlist.append(for_record)    
 #        againstlist.append(against_record)    
