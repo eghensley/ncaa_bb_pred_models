@@ -75,6 +75,7 @@ def allowed_clust(n_feats, n_clusts, scale):
 
 
 def allowed_clust_wteam(n_feats, n_clusts, scale):
+#    n_feats, n_clusts, scale = 9, 7, RobustScaler()
     import singlegamestats
     import pandas as pd
     from scipy.cluster.hierarchy import linkage, fcluster

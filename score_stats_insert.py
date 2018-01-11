@@ -22,11 +22,14 @@ x1 = x[1]
 x2 = x[2]
 x3 = x[3]
 x4 = x[4]
+x5 = x[5]
+x6 = x[6]
+x7 = x[7]
 names = iid['team']
 dates = iid['date']
 
-for name, date, xval1, xval2, xval3, xval4 in zip(names, dates, x1, x2, x3, x4):
-    cursor.execute(('INSERT INTO ncaa_bb.score_stats VALUES ("%s", "%s", %s, %s, %s, %s' % (name, date, xval1, xval2, xval3, xval4)) + ');')
+for name, date, xval1, xval2, xval3, xval4, xval5, xval6, xval7 in zip(names, dates, x1, x2, x3, x4, x5, x6, x7):
+    cursor.execute(('INSERT INTO ncaa_bb.allow_stats VALUES ("%s", "%s", %s, %s, %s, %s, %s, %s, %s' % (name, date, xval1, xval2, xval3, xval4, xval5, xval6, xval7)) + ');')
     cnx.commit()
 cursor.close()
 cnx.close()
