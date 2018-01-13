@@ -11,6 +11,7 @@ import math
 from gp import bayesian_optimisation
 from matplotlib import pyplot as plt
 import singlegamestats 
+from sklearn.preprocessing import MinMaxScaler
 
 stat = 'rebounding'
 fa = 'allow'
@@ -18,6 +19,12 @@ pastdata = singlegamestats.pull_targets_train(stat)
 data = singlegamestats.pull_targets_test(stat, fa)
 data=data.dropna(how='any')
 pastdata.describe()
+scale = MinMaxScaler().fit(np.array(list(data['favstat']) + list(data['dogstat'])).reshape(-1,1))
+pastdata['for'] = scale.transform(np.array(pastdata['for']).reshape(-1,1))
+pastdata['allow'] = scale.transform(np.array(pastdata['allow']).reshape(-1,1))
+
+data['favstat'] = scale.transform(np.array(data['favstat']).reshape(-1,1))
+data['dogstat'] = scale.transform(np.array(data['dogstat']).reshape(-1,1))
 
 def sample_loss(parameters):
     parameters = [.1, 2.5, 50, 0.25]
@@ -38,7 +45,7 @@ def sample_loss(parameters):
         else:
             againstdict[pastdata['teamname'][i]] = pastdata['allow'][i]
     season = np.array(data['date'])[0].year
-    for date, t1, t2, s1, s2, loc in np.array(data)[:1]:
+    for date, t1, t2, s1, s2, loc in np.array(data)[:100]:
         if date.month == 11 and date.year > season:
             fordictmean = np.mean(list(fordict.values()))
             againstdictmean = np.mean(list(againstdict.values()))
@@ -51,6 +58,14 @@ def sample_loss(parameters):
              loc = -1
         elif loc == 0:
              loc = 1
+             
+        if t1 not in fordict.keys():
+            fordict[t1] = np.mean(pastdata['for']) - (np.std(pastdata['for']) * 1.5)
+            againstdict[t1] = np.mean(pastdata['allow']) + (np.std(pastdata['allow']) * 1.5)        
+        if t2 not in fordict.keys():
+            fordict[t2] = np.mean(pastdata['for']) - (np.std(pastdata['for']) * 1.5)
+            againstdict[t2] = np.mean(pastdata['allow']) + (np.std(pastdata['allow']) * 1.5)
+            
         s1_exp = (fordict[t1]+againstdict[t2])/2 + (loc * hf)
         s2_exp = (fordict[t2]+againstdict[t1])/2 - (loc * hf)
         s1_error = (s1 - s1_exp)/s1_exp
