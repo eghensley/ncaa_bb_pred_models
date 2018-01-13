@@ -6,6 +6,65 @@ Created on Tue Dec 26 12:50:54 2017
 @author: eric.hensleyibm.com
 """
 
+
+def pull_targets_train(stat):
+    import mysql.connector 
+    import pandas as pd
+    passcode = 'ibm1234'
+    cnx = mysql.connector.connect(user='root', password=passcode,
+                              host='127.0.0.1',
+                              database='ncaa_bb') 
+    cursor = cnx.cursor()
+    query = "select al.teamname, avg(%s) from allow_stats as al join score_stats as sc on al.teamname = sc.teamname and al.allowdate = sc.scoredate where allowdate < '2010-11-01' group by teamname" % (stat) 
+    labels = ['teamname', 'stat']
+    cursor.execute(query)
+    gamedata = pd.DataFrame(cursor.fetchall(), columns = labels)
+    return gamedata
+
+
+
+def pull_targets_test(stat, fa):
+    import mysql.connector 
+    import pandas as pd
+    passcode = 'ibm1234'
+    cnx = mysql.connector.connect(user='root', password=passcode,
+                              host='127.0.0.1',
+                              database='ncaa_bb') 
+    cursor = cnx.cursor()
+    query = "SELECT \
+        oddsdate, favorite, underdog, bs1.`%s`, bs2.`%s`, homeaway\
+    FROM\
+        oddsdata AS od\
+            JOIN\
+        %s_stats AS bs1 ON od.oddsdate = bs1.%sdate\
+            AND bs1.teamname = od.favorite\
+            JOIN\
+        %s_stats AS bs2 ON od.oddsdate = bs2.%sdate\
+            AND bs2.teamname = od.underdog\
+    WHERE\
+        oddsdate > '2010-11-01'\
+    ORDER BY oddsdate ASC" % (stat, stat, fa, fa, fa, fa)
+    labels = ['date', 'fav', 'dog', 'favstat', 'dogstat', 'ha']
+    cursor.execute(query)
+    gamedata = pd.DataFrame(cursor.fetchall(), columns = labels)
+    return gamedata
+
+def pull_targets():
+    import mysql.connector 
+    import pandas as pd
+    passcode = 'ibm1234'
+    cnx = mysql.connector.connect(user='root', password=passcode,
+                              host='127.0.0.1',
+                              database='ncaa_bb') 
+    cursor = cnx.cursor()
+    query = 'SELECT * FROM ncaa_bb.allow_stats join ncaa_bb.score_stats on allow_stats.teamname = score_stats.teamname and allow_stats.allowdate = score_stats.scoredate'
+    labels = ['teamname', 'allowdate', 'rebounding', 'fouling', 'foulrate', 'post', 'guarding', 'stealing', 'blocking', 'teamname', 'scoredate', 'shooting-efficiency', 'teamwork', 'chemistry', 'true-shooting-percentage']
+    cursor.execute(query)
+    gamedata = pd.DataFrame(cursor.fetchall(), columns = labels)
+    return gamedata
+    
+    
+    
 def pull():
     import mysql.connector   
     import pandas as pd

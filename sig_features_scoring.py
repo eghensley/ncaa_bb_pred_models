@@ -10,7 +10,6 @@ shooting_efficiency = ['offensive-efficiency',
  'true-shooting-percentage',
  'floor-percentage']
 
-
 teamwork = ['assists-per-possession',
  'defensive-rebounds-per-game',
  'fta-per-fga',
@@ -31,7 +30,6 @@ chemistry = ['defensive-rebounds-per-game',
  '2wkfta-per-fga',
  'assists-per-possession',
  'assists-per-possession']
-
 
 true_shooting = ['true-shooting-percentage', 'effective-field-goal-pct',
  'effective-field-goal-pct', 'offensive-efficiency']
