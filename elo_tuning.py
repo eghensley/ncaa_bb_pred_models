@@ -20,6 +20,7 @@ data=data.dropna(how='any')
 pastdata.describe()
 
 def sample_loss(parameters):
+    parameters = [.1, 2.5, 50, 0.25]
     print(parameters)
     hf, pwr, shrink, adj = parameters
     all_s1_error = []
@@ -72,9 +73,10 @@ def sample_loss(parameters):
     print(avg_error)
     return avg_error
 
-bounds = np.array([[0,.5], [0, 5], [10, 100], [.1, .3]])
-start = [[.00501013359, 2.64145612, 20.12802666, 0.17893941]]
-results = bayesian_optimisation(n_iters=30,  
+bounds = np.array([[0,.5], [0, 5], [10, 100], [.1, .5]])
+#start = [[.1, 2.5, 50, 0.25]]
+start = [[.1, 2.5, 50, 0.25]]
+results = bayesian_optimisation(n_iters=50,  
                       sample_loss=sample_loss, 
                       bounds=bounds,
                       x0 = start)
