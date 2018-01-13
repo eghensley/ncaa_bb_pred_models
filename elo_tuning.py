@@ -27,7 +27,9 @@ data['favstat'] = scale.transform(np.array(data['favstat']).reshape(-1,1))
 data['dogstat'] = scale.transform(np.array(data['dogstat']).reshape(-1,1))
 
 def sample_loss(parameters):
-    parameters = [.1, 2.5, 50, 0.25]
+#    parameters = [0.1, 2.5, 50, 0.25]
+
+
     print(parameters)
     hf, pwr, shrink, adj = parameters
     all_s1_error = []
@@ -85,6 +87,8 @@ def sample_loss(parameters):
     
     errors = (np.array(all_s1_error)+np.array(all_s2_error))/2
     avg_error = np.mean(errors)
+    if avg_error != avg_error:
+        avg_error = 100
     print(avg_error)
     return avg_error
 
