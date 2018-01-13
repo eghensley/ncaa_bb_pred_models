@@ -15,7 +15,16 @@ def pull_targets_train(stat):
                               host='127.0.0.1',
                               database='ncaa_bb') 
     cursor = cnx.cursor()
-    query = "select al.teamname, avg(%s) from allow_stats as al join score_stats as sc on al.teamname = sc.teamname and al.allowdate = sc.scoredate where allowdate < '2010-11-01' group by teamname" % (stat) 
+    query = "SELECT \
+        al.teamname, AVG(%s), (select AVG(%s) from allow_stats as al1 join score_stats as sc1 ON al1.teamname = sc1.teamname and al1.allowdate = sc1.scoredate join gamedata as gd1 on al1.teamname = gd1.teamname and al1.allowdate = gd1.date where gd1.opponent = sc.teamname)\
+    FROM\
+        allow_stats AS al\
+            JOIN\
+        score_stats AS sc ON al.teamname = sc.teamname\
+            AND al.allowdate = sc.scoredate\
+    WHERE\
+        allowdate < '2010-11-01'\
+    GROUP BY teamname" % (stat, stat) 
     labels = ['teamname', 'stat']
     cursor.execute(query)
     gamedata = pd.DataFrame(cursor.fetchall(), columns = labels)
