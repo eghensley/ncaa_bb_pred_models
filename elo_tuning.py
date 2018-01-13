@@ -17,6 +17,7 @@ fa = 'allow'
 pastdata = singlegamestats.pull_targets_train(stat)
 data = singlegamestats.pull_targets_test(stat, fa)
 data=data.dropna(how='any')
+pastdata.describe()
 
 def sample_loss(parameters):
     print(parameters)
@@ -24,17 +25,17 @@ def sample_loss(parameters):
     all_s1_error = []
     all_s2_error = []
     fordict = {}
-    for i in range(0, len(pastdata['name'])):
+    for i in range(0, len(pastdata['teamname'])):
         if math.isnan(pastdata['for'][i]):
-            fordict[pastdata['name'][i]] = np.mean(pastdata['for']) - (np.std(pastdata['for']) * 1.5)
+            fordict[pastdata['teamname'][i]] = np.mean(pastdata['for']) - (np.std(pastdata['for']) * 1.5)
         else:
-            fordict[pastdata['name'][i]] = pastdata['for'][i]
+            fordict[pastdata['teamname'][i]] = pastdata['for'][i]
     againstdict = {}
-    for i in range(0, len(pastdata['name'])):
-        if math.isnan(pastdata['against'][i]):
-            againstdict[pastdata['name'][i]] = np.mean(pastdata['for']) + (np.std(pastdata['for']) * 1.5)
+    for i in range(0, len(pastdata['teamname'])):
+        if math.isnan(pastdata['allow'][i]):
+            againstdict[pastdata['teamname'][i]] = np.mean(pastdata['allow']) + (np.std(pastdata['allow']) * 1.5)
         else:
-            againstdict[pastdata['name'][i]] = pastdata['against'][i]
+            againstdict[pastdata['teamname'][i]] = pastdata['allow'][i]
     season = np.array(data['date'])[0].year
     for date, t1, t2, s1, s2, loc in np.array(data)[:1]:
         if date.month == 11 and date.year > season:
@@ -71,7 +72,7 @@ def sample_loss(parameters):
     print(avg_error)
     return avg_error
 
-bounds = np.array([[0,.01], [0, 5], [10, 100], [.1, .3]])
+bounds = np.array([[0,.5], [0, 5], [10, 100], [.1, .3]])
 start = [[.00501013359, 2.64145612, 20.12802666, 0.17893941]]
 results = bayesian_optimisation(n_iters=30,  
                       sample_loss=sample_loss, 

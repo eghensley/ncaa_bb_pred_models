@@ -25,7 +25,7 @@ def pull_targets_train(stat):
     WHERE\
         allowdate < '2010-11-01'\
     GROUP BY teamname" % (stat, stat) 
-    labels = ['teamname', 'stat']
+    labels = ['teamname', 'for', 'allow']
     cursor.execute(query)
     gamedata = pd.DataFrame(cursor.fetchall(), columns = labels)
     return gamedata
