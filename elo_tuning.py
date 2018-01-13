@@ -88,7 +88,7 @@ def sample_loss(parameters):
     errors = (np.array(all_s1_error)+np.array(all_s2_error))/2
     avg_error = np.mean(errors)
     if avg_error != avg_error:
-        avg_error = 100
+        avg_error = 1
     print(avg_error)
     return avg_error
 
