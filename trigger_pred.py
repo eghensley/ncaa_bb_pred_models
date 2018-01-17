@@ -11,6 +11,8 @@ import lightgbm as lgb
 from gp import bayesian_optimisation
 import numpy as np
 from sklearn.model_selection import cross_val_score, KFold
+from matplotlib import pyplot as plt
+
 #from sklearn.model_selection import learning_curve
 
 data = pd.read_csv('chemistry_data.csv')
@@ -24,20 +26,22 @@ x_feats.remove('chemistry')
 
 
 def sample_loss(parameters):
-    print(parameters)
     trees = int(round(parameters[0],0))
-    print(trees)
 #    trees = 10
     model = lgb.LGBMRegressor(random_state = 1108, n_estimators = trees)
-    print(model)
     score = cross_val_score(model, data[x_feats], data['chemistry'], scoring = 'explained_variance' ,cv = KFold(random_state = 46))
-    print(score)
     return np.mean(score)
 
 bounds = np.array([[5, 200]])
 #start = [[.1, 2.5, 50, 0.25]]
-start = [[20]]
-results = bayesian_optimisation(n_iters=10,  
+start = [[ 50.64148649]]
+results = bayesian_optimisation(n_iters=25,  
                       sample_loss=sample_loss, 
                       bounds=bounds,
                       x0 = start)
+
+plt.plot(results[1])
+if list(results[1]).index(max(results[1])) == 0:
+    print('no improvement')
+else:
+    print(  results[0][list(results[1]).index(max(results[1]))] )
