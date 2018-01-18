@@ -4,3 +4,4 @@ shooting_efficiency.csv
 trigger_pred.py
 gp.py
 find_n_feats.py
+lgb_tuning_chemistry.py
