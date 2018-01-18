@@ -1,3 +1,5 @@
 
 chemistry_data.csv
 shooting_efficiency.csv
+trigger_pred.py
+gp.py
