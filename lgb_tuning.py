@@ -7,6 +7,8 @@ from sklearn.gaussian_process.kernels import RBF, RationalQuadratic, ExpSineSqua
 from sklearn.preprocessing import StandardScaler, MinMaxScaler, RobustScaler
 from sklearn.pipeline import Pipeline
 import execute_lgb_tuning
+from sklearn.linear_model import LinearRegression
+
 # explained_variance
 def test_scaler(x, y):
     scores = []
@@ -135,48 +137,69 @@ if __name__ == '__main__':
     x_feats = list(data)
     x_feats.remove(label)
     
-    x,y = data[x_feats], data[label] 
-    #scale = test_scaler(data[x_feats], data[label]) #minmax
-    #f = open('%s.txt'%(label), 'a')
-    #f.write('scale: %s,'%(scale))
-    #f.close()
-    scale = StandardScaler()
-    learn_rate = find_lr(.01, data[x_feats], data[label], scale)
-    f = open('%s.txt'%(label), 'a')
-    f.write('start lr: %s,'%(learn_rate))
-    f.close()
-    #scale = StandardScaler()
-    #learn_rate = .04
-    model = lgb.LGBMRegressor(random_state = 1108, n_estimators = 100, subsample = .8, learning_rate = learn_rate)
-    model.fit(scale.fit_transform(data[x_feats]), data[label])
-    sigs = model.feature_importances_
-    indices = np.argsort(sigs)[::-1]
-    feat_sigs = [x_feats[i-1] for i in indices]
-    features = find_feats()
-    f = open('%s.txt'%(label), 'a')
-    f.write('start n feats: %s,'%(features))
-    f.close()
-    new_learn_rate = find_lr(learn_rate, data[feat_sigs[:features]], data[label], scale)
-    f = open('%s.txt'%(label), 'a')
-    f.write('significant features: ')
-    for line in feat_sigs[:features]:
-        f.write('%s, '%(line))
-    f.close()
-    results, params = hyper_parameter_tuning()
-    gauss_results = pd.DataFrame()
-    for result_batch, param_batch in zip(results, params):
-        for result_item, param_item in zip(result_batch, param_batch):
-            gauss_results = gauss_results.append({'score':result_item, 'colsample_bytree':param_item[0], 'max_bin': int(param_item[1]), 'min_child_samples': int(param_item[2]), 'num_leaves' : int(param_item[3]), 'subsample': param_item[4]}, ignore_index = True)
+#    x,y = data[x_feats], data[label] 
+#    #scale = test_scaler(data[x_feats], data[label]) #minmax
+#    #f = open('%s.txt'%(label), 'a')
+#    #f.write('scale: %s,'%(scale))
+#    #f.close()
+#    scale = StandardScaler()
+#    learn_rate = find_lr(.01, data[x_feats], data[label], scale)
+#    f = open('%s.txt'%(label), 'a')
+#    f.write('start lr: %s,'%(learn_rate))
+#    f.close()
+#    #scale = StandardScaler()
+#    #learn_rate = .04
+#    model = lgb.LGBMRegressor(random_state = 1108, n_estimators = 100, subsample = .8, learning_rate = learn_rate)
+#    model.fit(scale.fit_transform(data[x_feats]), data[label])
+#    sigs = model.feature_importances_
+#    indices = np.argsort(sigs)[::-1]
+#    feat_sigs = [x_feats[i-1] for i in indices]
+#    features = find_feats()
+#    f = open('%s.txt'%(label), 'a')
+#    f.write('start n feats: %s,'%(features))
+#    f.close()
+#    new_learn_rate = find_lr(learn_rate, data[feat_sigs[:features]], data[label], scale)
+#    f = open('%s.txt'%(label), 'a')
+#    f.write('significant features: ')
+#    for line in feat_sigs[:features]:
+#        f.write('%s, '%(line))
+#    f.close()
+#    results, params = hyper_parameter_tuning()
+#    gauss_results = pd.DataFrame()
+#    for result_batch, param_batch in zip(results, params):
+#        for result_item, param_item in zip(result_batch, param_batch):
+#            gauss_results = gauss_results.append({'score':result_item, 'colsample_bytree':param_item[0], 'max_bin': int(param_item[1]), 'min_child_samples': int(param_item[2]), 'num_leaves' : int(param_item[3]), 'subsample': param_item[4]}, ignore_index = True)
+#    
+#    gauss_results.to_csv('%s_results.csv' % (label))
     
-    gauss_results.to_csv('%s_results.csv' % (label))
+    gauss_results = pd.read_csv('%s_results.csv' % (label))
+    del gauss_results['Unnamed: 0']
+    features = 298
+    new_learn_rate = .04
+    scale = StandardScaler()
+    feat_sigs = x_feats[:features] 
+
+       
+    base_model = Pipeline([('scale',scale), ('clf',LinearRegression())])
+    baseline_score = cross_val_score(base_model, data[feat_sigs], data[label], scoring = 'explained_variance' ,cv = KFold(n_splits = 5, random_state = 86))
+    baseline_score = np.mean(baseline_score)
+    
     colsample, bin_size, min_child, n_leaves, score_val, sub_sample = gauss_results.sort_values('score', ascending = False)[:1].values[0]
+    tune_model = Pipeline([('scale',scale), ('clf',lgb.LGBMRegressor(random_state = 1108, n_estimators = 100, colsample_bytree = colsample, min_child_samples = int(min_child), num_leaves = int(n_leaves), subsample = sub_sample, max_bin = int(bin_size), learning_rate = new_learn_rate))])    
+    tune_score = cross_val_score(tune_model, data[feat_sigs], data[label], scoring = 'explained_variance' ,cv = KFold(n_splits = 5, random_state = 151))
+    tune_score = np.mean(tune_score)        
+        
     lr_drop = new_learn_rate
     trees_drop = 100
     
     
-    feat_sigs = ['5_game_ha_spread_allow_assists-per-fgm', '10_game_team_weighted_allow_steals-per-game', '100_game_team_weighted_allow_steals-per-game', '5_game_team_weighted_allow_steals-per-game', '100_game_ha_weighted_allow_steals-per-game', '5_game_team_weighted_allow_steals-perpossession', '50_game_ha_weighted_allow_steal-pct', '100_game_team_weighted_allow_extra-chances-per-game', '100_game_ha_spread_allow_percent-of-points-from-3-pointers', '5_game_team_weighted_allow_offensive-rebounding-pct']
+#    feat_sigs = ['5_game_ha_spread_allow_assists-per-fgm', '10_game_team_weighted_allow_steals-per-game', '100_game_team_weighted_allow_steals-per-game', '5_game_team_weighted_allow_steals-per-game', '100_game_ha_weighted_allow_steals-per-game', '5_game_team_weighted_allow_steals-perpossession', '50_game_ha_weighted_allow_steal-pct', '100_game_team_weighted_allow_extra-chances-per-game', '100_game_ha_spread_allow_percent-of-points-from-3-pointers', '5_game_team_weighted_allow_offensive-rebounding-pct']
     dropped_score_val = score_val
     improvement = 0
+    if type(baseline_score) is np.float64:
+        improvement = (tune_score - baseline_score)/baseline_score
+        print('%s percent improvement from baseline, dropping learning rate' % (improvement * 100))
+
     kernel_list = [RBF(), RationalQuadratic(), ExpSineSquared(), Matern()]
     while improvement >= 0:
         drop_scores, drop_trees = drop_lr(lr_drop/2, trees_drop, kernel_list)
