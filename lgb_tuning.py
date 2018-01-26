@@ -142,49 +142,68 @@ if __name__ == '__main__':
 #    #f = open('%s.txt'%(label), 'a')
 #    #f.write('scale: %s,'%(scale))
 #    #f.close()
-    scale = StandardScaler()
-    learn_rate = find_lr(.01, data[x_feats], data[label], scale)
-    f = open('%s.txt'%(label), 'a')
-    f.write('start lr: %s,'%(learn_rate))
-    f.close()
-    #scale = StandardScaler()
-    #learn_rate = .04
-    model = lgb.LGBMRegressor(random_state = 1108, n_estimators = 100, subsample = .8, learning_rate = learn_rate)
-    model.fit(scale.fit_transform(data[x_feats]), data[label])
-    sigs = model.feature_importances_
-    indices = np.argsort(sigs)[::-1]
-    feat_sigs = [x_feats[i-1] for i in indices]
-    features = find_feats()
-    f = open('%s.txt'%(label), 'a')
-    f.write('start n feats: %s,'%(features))
-    f.close()
-    new_learn_rate = find_lr(learn_rate, data[feat_sigs[:features]], data[label], scale)
-    f = open('%s.txt'%(label), 'a')
-    f.write('significant features: ')
-    for line in feat_sigs[:features]:
-        f.write('%s, '%(line))
-    f.close()
-    results, params = hyper_parameter_tuning()
-    gauss_results = pd.DataFrame()
-    for result_batch, param_batch in zip(results, params):
-        for result_item, param_item in zip(result_batch, param_batch):
-            gauss_results = gauss_results.append({'score':result_item, 'colsample_bytree':param_item[0], 'max_bin': int(param_item[1]), 'min_child_samples': int(param_item[2]), 'num_leaves' : int(param_item[3]), 'subsample': param_item[4]}, ignore_index = True)
-    
-    gauss_results.to_csv('%s_results.csv' % (label))
-    
-#    gauss_results = pd.read_csv('%s_results.csv' % (label))
-#    del gauss_results['Unnamed: 0']
-#    features = 298
-#    new_learn_rate = .04
 #    scale = StandardScaler()
+#    
+#    learn_rate = find_lr(.01, data[x_feats], data[label], scale)
+#    f = open('%s.txt'%(label), 'a')
+#    f.write('start lr: %s,'%(learn_rate))
+#    f.close()
+#    #scale = StandardScaler()
+#    #learn_rate = .04
+#    model = lgb.LGBMRegressor(random_state = 1108, n_estimators = 100, subsample = .8, learning_rate = learn_rate)
+#    model.fit(scale.fit_transform(data[x_feats]), data[label])
+#    sigs = model.feature_importances_
+#    indices = np.argsort(sigs)[::-1]
+#    feat_sigs = [x_feats[i-1] for i in indices]
+#    features = find_feats()
+#    f = open('%s.txt'%(label), 'a')
+#    f.write('start n feats: %s,'%(features))
+#    f.close()
+#    new_learn_rate = find_lr(learn_rate, data[feat_sigs[:features]], data[label], scale)
+#    f = open('%s.txt'%(label), 'a')
+#    f.write('significant features: ')
+#    for line in feat_sigs[:features]:
+#        f.write('%s, '%(line))
+#    f.close()
+#    results, params = hyper_parameter_tuning()
+#    gauss_results = pd.DataFrame()
+#    for result_batch, param_batch in zip(results, params):
+#        for result_item, param_item in zip(result_batch, param_batch):
+#            gauss_results = gauss_results.append({'score':result_item, 'colsample_bytree':param_item[0], 'max_bin': int(param_item[1]), 'min_child_samples': int(param_item[2]), 'num_leaves' : int(param_item[3]), 'subsample': param_item[4]}, ignore_index = True)
+#    gauss_results.to_csv('%s_results.csv' % (label))
+    
+    gauss_results = pd.read_csv('%s_results.csv' % (label))
+    del gauss_results['Unnamed: 0']
+    features = 298
+    new_learn_rate = .04
+    scale = StandardScaler()
     feat_sigs = x_feats[:features] 
-
-       
+    from sklearn.model_selection import RandomizedSearchCV
+    from scipy.stats import uniform
+    
+    param_dist = {'clf__colsample_bytree': uniform(.6, .4),
+                  'clf__min_child_samples': range(1,101),
+                  'clf__num_leaves': range(10,201),
+                  'clf__subsample': uniform(.4, .6),
+                  'clf__max_bin': range(1000, 2001)}
+    random_model = Pipeline([('scale',scale), ('clf',lgb.LGBMRegressor(random_state = 1108, n_estimators = 100, learning_rate = new_learn_rate))])
+    random_search = RandomizedSearchCV(random_model, param_distributions = param_dist, n_iter = 50, scoring = 'explained_variance' ,cv = KFold(n_splits = 5, random_state = 88), verbose = 2)
+    random_search.fit(data[feat_sigs], data[label])
+    colsample, bin_size, min_child, n_leaves, score_val, sub_sample = gauss_results.sort_values('score', ascending = False)[:1].values[0]
+    random_score = max(random_search.cv_results_['mean_test_score'])
+    if random_score > score_val:
+        print('Random Search %s Percent Better' % (((random_score-score_val)/score_val)*100))
+    else:
+        print('Gaussian Search Better')
+    random_results = random_search.cv_results_['params'][list(random_search.cv_results_['mean_test_score']).index(random_score)]
+    random_results = pd.DataFrame.from_dict(random_results, orient = 'index') 
+    print('Random Score: %s'%(random_score))
+    random_results.to_csv('%s_random_results.csv' % (label))
+    
     base_model = Pipeline([('scale',scale), ('clf',LinearRegression())])
     baseline_score = cross_val_score(base_model, data[feat_sigs], data[label], scoring = 'explained_variance' ,cv = KFold(n_splits = 5, random_state = 86))
     baseline_score = np.mean(baseline_score)
     
-    colsample, bin_size, min_child, n_leaves, score_val, sub_sample = gauss_results.sort_values('score', ascending = False)[:1].values[0]
     tune_model = Pipeline([('scale',scale), ('clf',lgb.LGBMRegressor(random_state = 1108, n_estimators = 100, colsample_bytree = colsample, min_child_samples = int(min_child), num_leaves = int(n_leaves), subsample = sub_sample, max_bin = int(bin_size), learning_rate = new_learn_rate))])    
     tune_score = cross_val_score(tune_model, data[feat_sigs], data[label], scoring = 'explained_variance' ,cv = KFold(n_splits = 5, random_state = 151))
     tune_score = np.mean(tune_score)        
