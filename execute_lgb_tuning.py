@@ -1,3 +1,3 @@
 import lgb_tuning
-trigger = 'shooting-efficiency'
-lgb_tuning.execute(trigger)
+label = 'shooting-efficiency'
+#lgb_tuning.execute(trigger)
