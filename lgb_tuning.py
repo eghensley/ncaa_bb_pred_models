@@ -27,7 +27,7 @@ def check_lr(lr, x, y, scale):
     scores = []
     for tree in [75, 100, 125]:
         test = Pipeline([('scale',scale), ('clf',lgb.LGBMRegressor(random_state = 1108, n_estimators = tree, subsample = .8, learning_rate = lr))])
-        score = cross_val_score(test, x, y, scoring = 'explained_variance' ,cv = KFold(n_splits = 5, random_state = 46))
+        score = cross_val_score(test, x, y, scoring = 'explained_variance' ,cv = KFold(n_splits = 5, random_state = 86))
         scores.append(np.mean(score))
     return scores.index(max(scores))
 
@@ -59,7 +59,7 @@ def find_lr(start_lr, x_, y, scale):
 def sample_loss_n_feats(parameters):
     feats = int(parameters[0])
     model = Pipeline([('scale',scale), ('clf',lgb.LGBMRegressor(random_state = 1108, n_estimators = 100, subsample = .8, learning_rate = learn_rate))])
-    score = cross_val_score(model, data[feat_sigs[:feats]], data[label], scoring = 'explained_variance' ,cv = KFold(n_splits = 5, random_state = 46))
+    score = cross_val_score(model, data[feat_sigs[:feats]], data[label], scoring = 'explained_variance' ,cv = KFold(n_splits = 5, random_state = 1108))
     print(np.mean(score))
     return np.mean(score)
 
@@ -80,7 +80,7 @@ def sample_loss_hyperparameters(parameters):
     leaves = int(parameters[3])
     sample = parameters[4]
     model = Pipeline([('scale',scale), ('clf',lgb.LGBMRegressor(random_state = 1108, n_estimators = 100, colsample_bytree = tree_sample, min_child_samples = child_samples, num_leaves = leaves, subsample = sample, max_bin = bin_max, learning_rate = new_learn_rate))])
-    score = cross_val_score(model, data[feat_sigs[:features]], data[label], scoring = 'explained_variance' ,cv = KFold(n_splits = 5, random_state = 46))
+    score = cross_val_score(model, data[feat_sigs[:features]], data[label], scoring = 'explained_variance' ,cv = KFold(n_splits = 5, random_state = 88))
     print(np.mean(score))
     return np.mean(score)
  
@@ -107,7 +107,7 @@ def drop_lr(l_drop, trees, all_kernels):
         num_trees = int(parameters[0])
         model_lr = Pipeline([('scale',scale), ('clf',lgb.LGBMRegressor(random_state = 1108, n_estimators = num_trees, colsample_bytree = colsample, min_child_samples = int(min_child), num_leaves = int(n_leaves), subsample = sub_sample, max_bin = int(bin_size), learning_rate = l_drop))])
 #        lr_score = cross_val_score(model_lr, data[feat_sigs[:features]], data[label], scoring = 'explained_variance' ,cv = KFold(n_splits = 5, random_state = 46))
-        lr_score = cross_val_score(model_lr, data[feat_sigs], data[label], scoring = 'explained_variance' ,cv = KFold(n_splits = 5, random_state = 46))
+        lr_score = cross_val_score(model_lr, data[feat_sigs], data[label], scoring = 'explained_variance' ,cv = KFold(n_splits = 5, random_state = 151))
         print(np.mean(lr_score))
         return(np.mean(lr_score))     
         
