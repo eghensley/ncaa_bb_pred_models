@@ -14,7 +14,7 @@ def test_scaler(x, y):
     scores = []
     for scale in [StandardScaler(), MinMaxScaler(), RobustScaler()]:
         pipe = Pipeline([('scale',scale), ('clf',lgb.LGBMRegressor(random_state = 1108))])
-        score = cross_val_score(pipe, x, y, scoring = 'neg_mean_squared_error' ,cv = KFold(n_splits = 10, random_state = 46))
+        score = cross_val_score(pipe, x, y, scoring = 'explained_variance' ,cv = KFold(n_splits = 10, random_state = 46))
         scores.append(np.mean(score))
     if scores.index(max(scores)) == 0:
         print('Using Standard Scaler')
@@ -30,7 +30,7 @@ def check_lr(lr, x, y, scale):
     scores = []
     for tree in [75, 100, 125]:
         test = Pipeline([('scale',scale), ('clf',lgb.LGBMRegressor(random_state = 1108, n_estimators = tree, subsample = .8, learning_rate = lr))])
-        score = cross_val_score(test, x, y, scoring = 'neg_mean_squared_error' ,cv = KFold(n_splits = 5, random_state = 86))
+        score = cross_val_score(test, x, y, scoring = 'explained_variance' ,cv = KFold(n_splits = 5, random_state = 86))
         scores.append(np.mean(score))
     return scores.index(max(scores))
 
@@ -62,7 +62,7 @@ def find_lr(start_lr, x_, y, scale):
 def sample_loss_n_feats(parameters):
     feats = int(parameters[0])
     model = Pipeline([('scale',scale), ('clf',lgb.LGBMRegressor(random_state = 1108, n_estimators = 100, subsample = .8, learning_rate = learn_rate))])
-    score = cross_val_score(model, data[feat_sigs[:feats]], data[label], scoring = 'neg_mean_squared_error' ,cv = KFold(n_splits = 5, random_state = 1108))
+    score = cross_val_score(model, data[feat_sigs[:feats]], data[label], scoring = 'explained_variance' ,cv = KFold(n_splits = 5, random_state = 1108))
     print(np.mean(score))
     return np.mean(score)
 
@@ -83,7 +83,7 @@ def sample_loss_hyperparameters(parameters):
     leaves = int(parameters[3])
     sample = parameters[4]
     model = Pipeline([('scale',scale), ('clf',lgb.LGBMRegressor(random_state = 1108, n_estimators = 100, colsample_bytree = tree_sample, min_child_samples = child_samples, num_leaves = leaves, subsample = sample, max_bin = bin_max, learning_rate = new_learn_rate))])
-    score = cross_val_score(model, data[feat_sigs[:features]], data[label], scoring = 'neg_mean_squared_error' ,cv = KFold(n_splits = 5, random_state = 88))
+    score = cross_val_score(model, data[feat_sigs[:features]], data[label], scoring = 'explained_variance' ,cv = KFold(n_splits = 5, random_state = 88))
     print(np.mean(score))
     return np.mean(score)
  
@@ -110,15 +110,15 @@ def drop_lr(l_drop, trees, all_kernels):
         num_trees = int(parameters[0])
         model_lr = Pipeline([('scale',scale), ('clf',lgb.LGBMRegressor(random_state = 1108, n_estimators = num_trees, colsample_bytree = colsample, min_child_samples = int(min_child), num_leaves = int(n_leaves), subsample = sub_sample, max_bin = int(bin_size), learning_rate = l_drop))])
 #        lr_score = cross_val_score(model_lr, data[feat_sigs[:features]], data[label], scoring = 'explained_variance' ,cv = KFold(n_splits = 5, random_state = 46))
-        lr_score = cross_val_score(model_lr, data[feat_sigs], data[label], scoring = 'neg_mean_squared_error' ,cv = KFold(n_splits = 5, random_state = 151))
+        lr_score = cross_val_score(model_lr, data[feat_sigs], data[label], scoring = 'explained_variance' ,cv = KFold(n_splits = 5, random_state = 151))
         print(np.mean(lr_score))
         return(np.mean(lr_score))     
         
     drop_lr_scores = []
     drop_lr_trees = []
     for ker in all_kernels:
-        bounds = np.array([[trees, trees*3]])
-        start = [[trees*2]]
+        bounds = np.array([[trees * 1.5, trees*5]])
+        start = [[trees*3]]
         results = bayesian_optimisation(n_iters=8,  
                               sample_loss=sample_loss_learning_rate, 
                               bounds=bounds,
@@ -142,42 +142,42 @@ if __name__ == '__main__':
 #    #f = open('%s.txt'%(label), 'a')
 #    #f.write('scale: %s,'%(scale))
 #    #f.close()
-#    scale = StandardScaler()
-#    learn_rate = find_lr(.01, data[x_feats], data[label], scale)
-#    f = open('%s.txt'%(label), 'a')
-#    f.write('start lr: %s,'%(learn_rate))
-#    f.close()
-#    #scale = StandardScaler()
-#    #learn_rate = .04
-#    model = lgb.LGBMRegressor(random_state = 1108, n_estimators = 100, subsample = .8, learning_rate = learn_rate)
-#    model.fit(scale.fit_transform(data[x_feats]), data[label])
-#    sigs = model.feature_importances_
-#    indices = np.argsort(sigs)[::-1]
-#    feat_sigs = [x_feats[i-1] for i in indices]
-#    features = find_feats()
-#    f = open('%s.txt'%(label), 'a')
-#    f.write('start n feats: %s,'%(features))
-#    f.close()
-#    new_learn_rate = find_lr(learn_rate, data[feat_sigs[:features]], data[label], scale)
-#    f = open('%s.txt'%(label), 'a')
-#    f.write('significant features: ')
-#    for line in feat_sigs[:features]:
-#        f.write('%s, '%(line))
-#    f.close()
-#    results, params = hyper_parameter_tuning()
-#    gauss_results = pd.DataFrame()
-#    for result_batch, param_batch in zip(results, params):
-#        for result_item, param_item in zip(result_batch, param_batch):
-#            gauss_results = gauss_results.append({'score':result_item, 'colsample_bytree':param_item[0], 'max_bin': int(param_item[1]), 'min_child_samples': int(param_item[2]), 'num_leaves' : int(param_item[3]), 'subsample': param_item[4]}, ignore_index = True)
-#    
-#    gauss_results.to_csv('%s_results.csv' % (label))
-    
-    gauss_results = pd.read_csv('%s_results.csv' % (label))
-    del gauss_results['Unnamed: 0']
-    features = 298
-    new_learn_rate = .04
     scale = StandardScaler()
-    feat_sigs = x_feats[:features] 
+    learn_rate = find_lr(.01, data[x_feats], data[label], scale)
+    f = open('%s.txt'%(label), 'a')
+    f.write('start lr: %s,'%(learn_rate))
+    f.close()
+    #scale = StandardScaler()
+    #learn_rate = .04
+    model = lgb.LGBMRegressor(random_state = 1108, n_estimators = 100, subsample = .8, learning_rate = learn_rate)
+    model.fit(scale.fit_transform(data[x_feats]), data[label])
+    sigs = model.feature_importances_
+    indices = np.argsort(sigs)[::-1]
+    feat_sigs = [x_feats[i-1] for i in indices]
+    features = find_feats()
+    f = open('%s.txt'%(label), 'a')
+    f.write('start n feats: %s,'%(features))
+    f.close()
+    new_learn_rate = find_lr(learn_rate, data[feat_sigs[:features]], data[label], scale)
+    f = open('%s.txt'%(label), 'a')
+    f.write('significant features: ')
+    for line in feat_sigs[:features]:
+        f.write('%s, '%(line))
+    f.close()
+    results, params = hyper_parameter_tuning()
+    gauss_results = pd.DataFrame()
+    for result_batch, param_batch in zip(results, params):
+        for result_item, param_item in zip(result_batch, param_batch):
+            gauss_results = gauss_results.append({'score':result_item, 'colsample_bytree':param_item[0], 'max_bin': int(param_item[1]), 'min_child_samples': int(param_item[2]), 'num_leaves' : int(param_item[3]), 'subsample': param_item[4]}, ignore_index = True)
+    
+    gauss_results.to_csv('%s_results.csv' % (label))
+    
+#    gauss_results = pd.read_csv('%s_results.csv' % (label))
+#    del gauss_results['Unnamed: 0']
+#    features = 298
+#    new_learn_rate = .04
+#    scale = StandardScaler()
+#    feat_sigs = x_feats[:features] 
 
        
     base_model = Pipeline([('scale',scale), ('clf',LinearRegression())])
