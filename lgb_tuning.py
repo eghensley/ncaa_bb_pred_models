@@ -177,7 +177,7 @@ if __name__ == '__main__':
 #    features = 298
 #    new_learn_rate = .04
 #    scale = StandardScaler()
-#    feat_sigs = x_feats[:features] 
+    feat_sigs = x_feats[:features] 
 
        
     base_model = Pipeline([('scale',scale), ('clf',LinearRegression())])
