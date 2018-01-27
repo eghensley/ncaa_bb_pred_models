@@ -105,30 +105,48 @@ def hyper_parameter_tuning():
         params_list.append(results[0])
     return result_list, params_list
 
-def drop_lr(l_drop, trees, all_kernels): 
-    def sample_loss_learning_rate(parameters):
-        num_trees = int(parameters[0])
-        model_lr = Pipeline([('scale',scale), ('clf',lgb.LGBMRegressor(random_state = 1108, n_estimators = num_trees, colsample_bytree = colsample, min_child_samples = int(min_child), num_leaves = int(n_leaves), subsample = sub_sample, max_bin = int(bin_size), learning_rate = l_drop))])
-#        lr_score = cross_val_score(model_lr, data[feat_sigs[:features]], data[label], scoring = 'explained_variance' ,cv = KFold(n_splits = 5, random_state = 46))
-        lr_score = cross_val_score(model_lr, data[feat_sigs], data[label], scoring = 'explained_variance' ,cv = KFold(n_splits = 5, random_state = 151))
-        print(np.mean(lr_score))
-        return(np.mean(lr_score))     
-        
-    drop_lr_scores = []
-    drop_lr_trees = []
-    for ker in all_kernels:
-        bounds = np.array([[trees * 1.5, trees*5]])
-        start = [[trees*3]]
-        results = bayesian_optimisation(n_iters=8,  
-                              sample_loss=sample_loss_learning_rate, 
-                              bounds=bounds,
-                              x0 = start,
-                              gp_params = {'kernel': ker, 'alpha': 1e-5, 'n_restarts_optimizer': 10, 'normalize_y': True})
-        print('kernel: %s, score: %s' % (ker, max(results[1]))) 
-        drop_lr_scores.append(results[1])
-        drop_lr_trees.append(results[0])
-    return drop_lr_scores, drop_lr_trees
+#def drop_lr(l_drop, trees, all_kernels): 
+#    def sample_loss_learning_rate(parameters):
+#        num_trees = int(parameters[0])
+#        model_lr = Pipeline([('scale',scale), ('clf',lgb.LGBMRegressor(random_state = 1108, n_estimators = num_trees, colsample_bytree = colsample, min_child_samples = int(min_child), num_leaves = int(n_leaves), subsample = sub_sample, max_bin = int(bin_size), learning_rate = l_drop))])
+##        lr_score = cross_val_score(model_lr, data[feat_sigs[:features]], data[label], scoring = 'explained_variance' ,cv = KFold(n_splits = 5, random_state = 46))
+#        lr_score = cross_val_score(model_lr, data[feat_sigs], data[label], scoring = 'explained_variance' ,cv = KFold(n_splits = 5, random_state = 151))
+#        print(np.mean(lr_score))
+#        return(np.mean(lr_score))     
+#        
+#    drop_lr_scores = []
+#    drop_lr_trees = []
+#    for ker in all_kernels:
+#        bounds = np.array([[trees * 1.5, trees*5]])
+#        start = [[trees*3]]
+#        results = bayesian_optimisation(n_iters=8,  
+#                              sample_loss=sample_loss_learning_rate, 
+#                              bounds=bounds,
+#                              x0 = start,
+#                              gp_params = {'kernel': ker, 'alpha': 1e-5, 'n_restarts_optimizer': 10, 'normalize_y': True})
+#        print('kernel: %s, score: %s' % (ker, max(results[1]))) 
+#        drop_lr_scores.append(results[1])
+#        drop_lr_trees.append(results[0])
+#    return drop_lr_scores, drop_lr_trees
 
+def drop_lr(l_drop, trees):
+    prev_score = 0
+    prev_trees = 0
+    for trial in np.linspace(1.5, 8.5, 15):
+        num_trees = trees * trial
+        model_lr = Pipeline([('scale',scale), ('clf',lgb.LGBMRegressor(random_state = 1108, n_estimators = int(num_trees), colsample_bytree = colsample, min_child_samples = int(min_child), num_leaves = int(n_leaves), subsample = sub_sample, max_bin = int(bin_size), learning_rate = l_drop))])
+        lr_score = cross_val_score(model_lr, data[feat_sigs], data[label], scoring = 'explained_variance' ,cv = KFold(n_splits = 5, random_state = 151))
+        if np.mean(lr_score) > prev_score:
+            print('%s x trees IMPROVEMENT, continuing'  % (trial))
+            prev_score = np.mean(lr_score)
+            prev_trees = num_trees
+        else:
+            print('%s x trees NO IMPROVEMENT'  % (trial))
+            return prev_score, prev_trees
+    
+    
+    
+    
 #def execute(label):
 if __name__ == '__main__':
     label = execute_lgb_tuning.label
@@ -178,32 +196,32 @@ if __name__ == '__main__':
     new_learn_rate = .04
     scale = StandardScaler()
     feat_sigs = x_feats[:features] 
-    from sklearn.model_selection import RandomizedSearchCV
-    from scipy.stats import uniform
-    
-    param_dist = {'clf__colsample_bytree': uniform(.6, .4),
-                  'clf__min_child_samples': range(1,101),
-                  'clf__num_leaves': range(10,201),
-                  'clf__subsample': uniform(.4, .6),
-                  'clf__max_bin': range(1000, 2001)}
-    random_model = Pipeline([('scale',scale), ('clf',lgb.LGBMRegressor(random_state = 1108, n_estimators = 100, learning_rate = new_learn_rate))])
-    random_search = RandomizedSearchCV(random_model, param_distributions = param_dist, n_iter = 50, scoring = 'explained_variance' ,cv = KFold(n_splits = 5, random_state = 88), verbose = 2)
-    random_search.fit(data[feat_sigs], data[label])
-    colsample, bin_size, min_child, n_leaves, score_val, sub_sample = gauss_results.sort_values('score', ascending = False)[:1].values[0]
-    random_score = max(random_search.cv_results_['mean_test_score'])
-    if random_score > score_val:
-        print('Random Search %s Percent Better' % (((random_score-score_val)/score_val)*100))
-    else:
-        print('Gaussian Search Better')
-    random_results = random_search.cv_results_['params'][list(random_search.cv_results_['mean_test_score']).index(random_score)]
-    random_results = pd.DataFrame.from_dict(random_results, orient = 'index') 
-    print('Random Score: %s'%(random_score))
-    random_results.to_csv('%s_random_results.csv' % (label))
+#    from sklearn.model_selection import RandomizedSearchCV
+#    from scipy.stats import uniform
+#    
+#    param_dist = {'clf__colsample_bytree': uniform(.6, .4),
+#                  'clf__min_child_samples': range(1,101),
+#                  'clf__num_leaves': range(10,201),
+#                  'clf__subsample': uniform(.4, .6),
+#                  'clf__max_bin': range(1000, 2001)}
+#    random_model = Pipeline([('scale',scale), ('clf',lgb.LGBMRegressor(random_state = 1108, n_estimators = 100, learning_rate = new_learn_rate))])
+#    random_search = RandomizedSearchCV(random_model, param_distributions = param_dist, n_iter = 50, scoring = 'explained_variance' ,cv = KFold(n_splits = 5, random_state = 88), verbose = 2)
+#    random_search.fit(data[feat_sigs], data[label])
+#    random_score = max(random_search.cv_results_['mean_test_score'])
+#    if random_score > score_val:
+#        print('Random Search %s Percent Better' % (((random_score-score_val)/score_val)*100))
+#    else:
+#        print('Gaussian Search Better')
+#    random_results = random_search.cv_results_['params'][list(random_search.cv_results_['mean_test_score']).index(random_score)]
+#    random_results = pd.DataFrame.from_dict(random_results, orient = 'index') 
+#    print('Random Score: %s'%(random_score))
+#    random_results.to_csv('%s_random_results.csv' % (label))
     
     base_model = Pipeline([('scale',scale), ('clf',LinearRegression())])
     baseline_score = cross_val_score(base_model, data[feat_sigs], data[label], scoring = 'explained_variance' ,cv = KFold(n_splits = 5, random_state = 86))
     baseline_score = np.mean(baseline_score)
-    
+    colsample, bin_size, min_child, n_leaves, score_val, sub_sample = gauss_results.sort_values('score', ascending = False)[:1].values[0]
+
     tune_model = Pipeline([('scale',scale), ('clf',lgb.LGBMRegressor(random_state = 1108, n_estimators = 100, colsample_bytree = colsample, min_child_samples = int(min_child), num_leaves = int(n_leaves), subsample = sub_sample, max_bin = int(bin_size), learning_rate = new_learn_rate))])    
     tune_score = cross_val_score(tune_model, data[feat_sigs], data[label], scoring = 'explained_variance' ,cv = KFold(n_splits = 5, random_state = 151))
     tune_score = np.mean(tune_score)        
@@ -211,36 +229,51 @@ if __name__ == '__main__':
     lr_drop = new_learn_rate
     trees_drop = 100
     
-    
-#    feat_sigs = ['5_game_ha_spread_allow_assists-per-fgm', '10_game_team_weighted_allow_steals-per-game', '100_game_team_weighted_allow_steals-per-game', '5_game_team_weighted_allow_steals-per-game', '100_game_ha_weighted_allow_steals-per-game', '5_game_team_weighted_allow_steals-perpossession', '50_game_ha_weighted_allow_steal-pct', '100_game_team_weighted_allow_extra-chances-per-game', '100_game_ha_spread_allow_percent-of-points-from-3-pointers', '5_game_team_weighted_allow_offensive-rebounding-pct']
     dropped_score_val = score_val
     improvement = 0
     if type(baseline_score) is np.float64:
         improvement = (tune_score - baseline_score)/baseline_score
         print('%s percent improvement from baseline, dropping learning rate' % (improvement * 100))
 
-    kernel_list = [RBF(), RationalQuadratic(), ExpSineSquared(), Matern()]
     while improvement >= 0:
-        drop_scores, drop_trees = drop_lr(lr_drop/2, trees_drop, kernel_list)
+        drop_scores, drop_trees = drop_lr(lr_drop/2, trees_drop)
         print('Previous best score of: %s' % (dropped_score_val))
-        print('Max test score of: %s' % (max([item for sublist in drop_scores for item in sublist]))) 
-        print('Best test trees: %s' % (int([item for sublist in drop_trees for item in sublist][[item for sublist in drop_scores for item in sublist].index(max([item for sublist in drop_scores for item in sublist]))])))
-        improvement = max([item for sublist in drop_scores for item in sublist]) - dropped_score_val
-        temp_kernel_list = []
-        for i, k in enumerate(kernel_list):
-            if max(drop_scores[i]) >= dropped_score_val:
-                temp_kernel_list.append(k)
-        kernel_list = temp_kernel_list
-        if improvement >= 0 and len(kernel_list) > 0:
+        print('Max test score of: %s' % (drop_scores)) 
+        print('Best test trees: %s' % (drop_trees))
+        improvement = drop_scores - dropped_score_val
+        if improvement >= 0:
             lr_drop /= 2
-            trees_drop = int([item for sublist in drop_trees for item in sublist][[item for sublist in drop_scores for item in sublist].index(max([item for sublist in drop_scores for item in sublist]))])
+            trees_drop = drop_trees
             print('Continuing Search')
             print('Trees: %s'%(trees_drop))
-            dropped_score_val = (max([item for sublist in drop_scores for item in sublist]))
+            dropped_score_val = drop_scores
         else:
             print('Optimized Trees/LR Found')
             print('---- Trees: %s'%(trees_drop))
             print('---- LR: %s'%(lr_drop))
+
+#    kernel_list = [RBF(), RationalQuadratic(), ExpSineSquared(), Matern()]
+#    while improvement >= 0:
+#        drop_scores, drop_trees = drop_lr(lr_drop/2, trees_drop, kernel_list)
+#        print('Previous best score of: %s' % (dropped_score_val))
+#        print('Max test score of: %s' % (max([item for sublist in drop_scores for item in sublist]))) 
+#        print('Best test trees: %s' % (int([item for sublist in drop_trees for item in sublist][[item for sublist in drop_scores for item in sublist].index(max([item for sublist in drop_scores for item in sublist]))])))
+#        improvement = max([item for sublist in drop_scores for item in sublist]) - dropped_score_val
+#        temp_kernel_list = []
+#        for i, k in enumerate(kernel_list):
+#            if max(drop_scores[i]) >= dropped_score_val:
+#                temp_kernel_list.append(k)
+#        kernel_list = temp_kernel_list
+#        if improvement >= 0 and len(kernel_list) > 0:
+#            lr_drop /= 2
+#            trees_drop = int([item for sublist in drop_trees for item in sublist][[item for sublist in drop_scores for item in sublist].index(max([item for sublist in drop_scores for item in sublist]))])
+#            print('Continuing Search')
+#            print('Trees: %s'%(trees_drop))
+#            dropped_score_val = (max([item for sublist in drop_scores for item in sublist]))
+#        else:
+#            print('Optimized Trees/LR Found')
+#            print('---- Trees: %s'%(trees_drop))
+#            print('---- LR: %s'%(lr_drop))
             
     f = open('%s.txt'%(label), 'a')
     f.write('trees: %s,' % (trees_drop))
